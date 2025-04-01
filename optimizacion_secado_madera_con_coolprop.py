@@ -10,7 +10,7 @@ c_madera = 2500  # J/kg·K
 # L_v será calculado dinámicamente con CoolProp
 T_i = 25  # °C
 h_m = 0.002  # kg/m²·s
-t = 3600  # s
+t = 3600*3  # s
 R = 461  # J/kg·K
 X_i = 0.30  # humedad base seca inicial
 
@@ -51,20 +51,34 @@ def objective(x):
 def humidity_constraint(x):
     h, T_inf = x
     _, Xf, _ = calcular_T_Y_Xf(h, T_inf)
-    return 0.25 - Xf
+    return 0.26 - Xf
 
 bounds = [(10, 50), (30, 90)]
-x0 = [30, 70]
+x0 = [30, 50]
 constraints = {'type': 'ineq', 'fun': humidity_constraint}
 
-result = minimize(objective, x0, method='SLSQP', bounds=bounds, constraints=constraints)
+# result = minimize(
+#     objective,
+#     x0,
+#     method='trust-constr',
+#     bounds=bounds,
+#     constraints=[{'type': 'ineq', 'fun': humidity_constraint}],
+#     options={'verbose': 2}
+# )
+result = minimize(
+    objective,
+    x0,
+    method='SLSQP',
+    bounds=bounds,
+    constraints=constraints,
+    options={'ftol': 1e-8, 'maxiter': 1000, 'disp': True})
 opt_h, opt_Tinf = result.x
 opt_Ttabla, opt_Xf, opt_mevap = calcular_T_Y_Xf(opt_h, opt_Tinf)
 opt_Q = objective(result.x)
 
-# Malla de alta resolución
+#Malla de alta resolución
 h_vals = np.linspace(10, 50, 100)
-Tinf_vals = np.linspace(40, 95, 100)
+Tinf_vals = np.linspace(60, 90, 100)
 H, TINF = np.meshgrid(h_vals, Tinf_vals)
 Q_vals = np.zeros_like(H)
 Xf_vals = np.zeros_like(H)
@@ -79,17 +93,17 @@ for i in range(H.shape[0]):
             Q_vals[i, j] = np.nan
 
 # Gráfico de contorno mejorado
-plt.figure(figsize=(12, 7))
-cp = plt.contourf(H, TINF, Q_vals, levels=40, cmap='viridis')
-plt.colorbar(cp, label='Energía total entregada (kJ)')
-plt.scatter(opt_h, opt_Tinf, color='red', label='Óptimo', edgecolors='black')
-plt.xlabel('Coef. de convección h [W/m²·K]')
-plt.ylabel('Temperatura del aire T_inf [°C]')
-plt.title('Mapa ampliado de energía entregada (restricción: humedad ≤ 25%)')
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
-plt.show()
+# plt.figure(figsize=(12, 7))
+# cp = plt.contourf(H, TINF, Q_vals, levels=40, cmap='viridis')
+# plt.colorbar(cp, label='Energía total entregada (kJ)')
+# plt.scatter(opt_h, opt_Tinf, color='red', label='Óptimo', edgecolors='black')
+# plt.xlabel('Coef. de convección h [W/m²·K]')
+# plt.ylabel('Temperatura del aire T_inf [°C]')
+# plt.title('Mapa ampliado de energía entregada (restricción: humedad ≤ 25%)')
+# plt.legend()
+# plt.grid(True)
+# plt.tight_layout()
+# plt.show()
 
 # Resultados
 print(f"Óptimo encontrado:")
@@ -109,20 +123,41 @@ Q_vals_filled = np.copy(Q_vals)
 max_val = np.nanmax(Q_vals_filled)
 Q_vals_filled[np.isnan(Q_vals_filled)] = max_val + 100
 
-#mask = np.where(Xf_vals <= 0.25, 1, np.nan)
+mask = np.where(Xf_vals <= 0.26, 1, np.nan)
 
-plt.figure(figsize=(12, 7))
-cmap = cm.viridis
-norm = mcolors.Normalize(vmin=np.nanmin(Q_vals), vmax=max_val)
+# plt.figure(figsize=(12, 7))
+# cmap = cm.viridis
+# norm = mcolors.Normalize(vmin=np.nanmin(Q_vals), vmax=max_val)
 
-plt.pcolormesh(H, TINF, Q_vals_filled, cmap=cmap, norm=norm, shading='auto')
-plt.colorbar(label='Energía total entregada (kJ)')
-plt.contour(H, TINF, Xf_vals, levels=[0.25], colors='white', linewidths=1.5, linestyles='--')
-plt.scatter(opt_h, opt_Tinf, color='red', label='Óptimo', edgecolors='black')
-plt.xlabel('Coef. de convección h [W/m²·K]')
-plt.ylabel('Temperatura del aire T_inf [°C]')
-plt.title('Mapa completo de energía entregada (humedad ≤ 25%)')
-plt.legend()
-plt.grid(True)
+# plt.pcolormesh(H, TINF, Q_vals_filled, cmap=cmap, norm=norm, shading='auto')
+# plt.colorbar(label='Energía total entregada (kJ)')
+# #plt.contour(H, TINF, Xf_vals, levels=[0.25], colors='white', linewidths=1.5, linestyles='--')
+# plt.scatter(opt_h, opt_Tinf, color='red', label='Óptimo', edgecolors='black')
+# plt.xlabel('Coef. de convección h [W/m²·K]')
+# plt.ylabel('Temperatura del aire T_inf [°C]')
+# plt.title('Mapa completo de energía entregada (humedad ≤ 25%)')
+# plt.legend()
+# plt.grid(True)
+# plt.tight_layout()
+# plt.show()
+
+
+#energy surface 3d
+from mpl_toolkits.mplot3d import Axes3D
+
+fig = plt.figure(figsize=(12, 8))
+ax = fig.add_subplot(111, projection='3d')
+
+# Superficie
+surf = ax.plot_surface(H, TINF, Q_vals, cmap='viridis', edgecolor='none')
+
+# Etiquetas y estilo
+ax.set_xlabel('h [W/m²·K]')
+ax.set_ylabel('T_inf [°C]')
+ax.set_zlabel('Energía entregada (kJ)')
+ax.set_title('Superficie de energía entregada')
+
+# Barra de color
+fig.colorbar(surf, ax=ax, shrink=0.5, aspect=10, label='Energía (kJ)')
 plt.tight_layout()
 plt.show()
