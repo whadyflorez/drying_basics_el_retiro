@@ -51,7 +51,7 @@ def objective(x):
 def humidity_constraint(x):
     h, T_inf = x
     _, Xf, _ = calcular_T_Y_Xf(h, T_inf)
-    return 0.26 - Xf
+    return 0.25 - Xf
 
 bounds = [(10, 50), (30, 90)]
 x0 = [30, 50]
@@ -93,17 +93,17 @@ for i in range(H.shape[0]):
             Q_vals[i, j] = np.nan
 
 # Gráfico de contorno mejorado
-# plt.figure(figsize=(12, 7))
-# cp = plt.contourf(H, TINF, Q_vals, levels=40, cmap='viridis')
-# plt.colorbar(cp, label='Energía total entregada (kJ)')
-# plt.scatter(opt_h, opt_Tinf, color='red', label='Óptimo', edgecolors='black')
-# plt.xlabel('Coef. de convección h [W/m²·K]')
-# plt.ylabel('Temperatura del aire T_inf [°C]')
-# plt.title('Mapa ampliado de energía entregada (restricción: humedad ≤ 25%)')
-# plt.legend()
-# plt.grid(True)
-# plt.tight_layout()
-# plt.show()
+plt.figure(figsize=(12, 7))
+cp = plt.contourf(H, TINF, Q_vals, levels=40, cmap='viridis')
+plt.colorbar(cp, label='Energía total entregada (kJ)')
+plt.scatter(opt_h, opt_Tinf, color='red', label='Óptimo', edgecolors='black')
+plt.xlabel('Coef. de convección h [W/m²·K]')
+plt.ylabel('Temperatura del aire T_inf [°C]')
+plt.title('Mapa ampliado de energía entregada (restricción: humedad ≤ 25%)')
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
 
 # Resultados
 print(f"Óptimo encontrado:")
@@ -123,7 +123,7 @@ Q_vals_filled = np.copy(Q_vals)
 max_val = np.nanmax(Q_vals_filled)
 Q_vals_filled[np.isnan(Q_vals_filled)] = max_val + 100
 
-mask = np.where(Xf_vals <= 0.26, 1, np.nan)
+mask = np.where(Xf_vals <= 0.25, 1, np.nan)
 
 # plt.figure(figsize=(12, 7))
 # cmap = cm.viridis
@@ -150,6 +150,8 @@ ax = fig.add_subplot(111, projection='3d')
 
 # Superficie
 surf = ax.plot_surface(H, TINF, Q_vals, cmap='viridis', edgecolor='none')
+ax.scatter(opt_h, opt_Tinf, opt_Q, color='red', s=50, label='Óptimo')
+ax.legend()
 
 # Etiquetas y estilo
 ax.set_xlabel('h [W/m²·K]')
